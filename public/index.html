@@ -234,10 +234,11 @@
             syncBtn.disabled = true;
             
             try {
+                // Field mapping: Form → Lark Outbound Record
                 const data = {
                     'HKSLI no': document.getElementById('in-doc').value,
                     'Customer Name': document.getElementById('in-name').value,
-                    '送貨地址': document.getElementById('in-addr').value,
+                    'Location': document.getElementById('in-addr').value,
                     'Contact Name': document.getElementById('in-contact').value
                 };
 
@@ -278,9 +279,10 @@
                     // Get the most recent record
                     const latestRecord = result.data.items[0].fields;
                     
+                    // Field mapping: Lark Outbound Record → Form
                     document.getElementById('in-doc').value = latestRecord['HKSLI no'] || '';
                     document.getElementById('in-name').value = latestRecord['Customer Name'] || '';
-                    document.getElementById('in-addr').value = latestRecord['送貨地址'] || '';
+                    document.getElementById('in-addr').value = latestRecord['Location'] || '';
                     document.getElementById('in-contact').value = latestRecord['Contact Name'] || '';
                     
                     updateLabel();

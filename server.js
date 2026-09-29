@@ -37,6 +37,32 @@ async function getAccessToken() {
     return tenantAccessToken;
 }
 
+// Search record by HKSLI no (Doc Number)
+app.post('/api/records/search', async (req, res) => {
+    try {
+        const token = await getAccessToken();
+        const { hkSliNo } = req.body;
+        if (!hkSliNo) return res.status(400).json({ error: 'HKSLI no is required' });
+
+        const response = await axios.post(
+            `https://open.larksuite.com/open-apis/bitable/v1/apps/${BASE_APP_TOKEN}/tables/${TABLE_ID}/records/search`,
+            {
+                filter: {
+                    conjunction: 'and',
+                    conditions: [{ field_name: 'HKSLI no', operator: 'is', value: [hkSliNo] }]
+                }
+            },
+            {
+                headers: { Authorization: `Bearer ${token}` }
+            }
+        );
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error searching records:', error.response?.data || error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get records from Lark
 app.get('/api/records', async (req, res) => {
     try {
