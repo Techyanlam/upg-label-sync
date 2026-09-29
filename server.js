@@ -44,19 +44,34 @@ app.post('/api/records/search', async (req, res) => {
         const { hkSliNo } = req.body;
         if (!hkSliNo) return res.status(400).json({ error: 'HKSLI no is required' });
 
-        const response = await axios.post(
-            `https://open.larksuite.com/open-apis/bitable/v1/apps/${BASE_APP_TOKEN}/tables/${TABLE_ID}/records/search`,
+        // Fetch all records and filter on server side
+        const response = await axios.get(
+            `https://open.larksuite.com/open-apis/bitable/v1/apps/${BASE_APP_TOKEN}/tables/${TABLE_ID}/records`,
             {
-                filter: {
-                    conjunction: 'and',
-                    conditions: [{ field_name: 'HKSLI no', operator: 'is', value: [hkSliNo] }]
+                headers: { Authorization: `Bearer ${token}` },
+                params: {
+                    page_size: 500
                 }
-            },
-            {
-                headers: { Authorization: `Bearer ${token}` }
             }
         );
-        res.json(response.data);
+        
+        // Filter records by HKSLI no
+        const items = response.data.data.items.filter(item => {
+            const hkSliNoField = item.fields['HKSLI no'];
+            if (!hkSliNoField) return false;
+            
+            // Handle both string and array formats
+            let fieldValue = '';
+            if (Array.isArray(hkSliNoField)) {
+                fieldValue = hkSliNoField.map(i => i.text || i).join('');
+            } else {
+                fieldValue = hkSliNoField;
+            }
+            
+            return fieldValue === hkSliNo || fieldValue.includes(hkSliNo);
+        });
+        
+        res.json({ data: { items } });
     } catch (error) {
         console.error('Error searching records:', error.response?.data || error.message);
         res.status(500).json({ error: error.message });
