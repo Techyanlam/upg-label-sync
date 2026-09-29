@@ -157,7 +157,7 @@
     <div class="input-section">
         <h3>物流標籤資料填寫</h3>
         <div class="field-row">Customer Name：<input id="in-name" oninput="updateLabel()" placeholder="客戶名稱"></div>
-        <div class="field-row">Doc Number：<input id="in-doc" value="HKLSI26050656" oninput="updateLabel()"></div>
+        <div class="field-row">Doc Number：<input id="in-doc" value="HKLSI26050656" oninput="updateLabel()" onblur="autoFetchFromLark()" placeholder="輸入後自動同步"></div>
         <div class="field-row">Ship-to Address：<input id="in-addr" value="九龍-理大" oninput="updateLabel()"></div>
         <div class="field-row">Contact Name：<input id="in-contact" value="Ken Chan" oninput="updateLabel()"></div>
         
@@ -280,10 +280,10 @@
                     const latestRecord = result.data.items[0].fields;
                     
                     // Field mapping: Lark Outbound Record → Form
-                    document.getElementById('in-doc').value = latestRecord['HKSLI no'] || '';
-                    document.getElementById('in-name').value = latestRecord['Customer Name'] || '';
-                    document.getElementById('in-addr').value = latestRecord['Location'] || '';
-                    document.getElementById('in-contact').value = latestRecord['Contact Name'] || '';
+                    document.getElementById('in-doc').value = extractFieldValue(latestRecord['HKSLI no']) || '';
+                    document.getElementById('in-name').value = extractFieldValue(latestRecord['Customer Name']) || '';
+                    document.getElementById('in-addr').value = extractFieldValue(latestRecord['Location']) || '';
+                    document.getElementById('in-contact').value = extractFieldValue(latestRecord['Contact Name']) || '';
                     
                     updateLabel();
                     showStatus('✓ 成功載入最新記錄！', 'success');
@@ -296,6 +296,53 @@
             } finally {
                 loadBtn.disabled = false;
             }
+        }
+
+        // Auto-fetch from Lark when Doc Number loses focus
+        async function autoFetchFromLark() {
+            const docNo = document.getElementById('in-doc').value.trim();
+            if (!docNo) return;
+
+            try {
+                const response = await fetch('/api/records/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hkSliNo: docNo })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.data && result.data.items && result.data.items.length > 0) {
+                    const record = result.data.items[0].fields;
+                    
+                    // Field mapping: Lark Outbound Record → Form
+                    // Handle Lark API response format (array or string)
+                    document.getElementById('in-name').value = extractFieldValue(record['Customer Name']) || '';
+                    document.getElementById('in-addr').value = extractFieldValue(record['Location']) || '';
+                    document.getElementById('in-contact').value = extractFieldValue(record['Contact Name']) || '';
+                    
+                    updateLabel();
+                    showStatus('✓ 自動同步成功！', 'success');
+                } else {
+                    showStatus(' 未找到對應 Doc Number 的記錄', 'info');
+                }
+            } catch (error) {
+                console.error('Auto-fetch error:', error);
+                showStatus('✗ 自動同步失敗：' + error.message, 'error');
+            }
+        }
+
+        // Extract field value from Lark API response (handle array or string)
+        function extractFieldValue(fieldValue) {
+            if (!fieldValue) return '';
+            if (Array.isArray(fieldValue)) {
+                return fieldValue.map(item => item.text || item).join('');
+            }
+            return fieldValue;
         }
 
         updateLabel();
